@@ -3,59 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>末日生存 Last Minute</title>
-    <!-- 引入 Vue 3 和 Tailwind CSS (为了好看的界面) -->
+    <title>末日生存 Last Minute v2.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 自定义一些简单的动画 */
         @keyframes pulse-red {
             0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
             70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
         }
-        .critical-low {
-            animation: pulse-red 2s infinite;
-            border: 1px solid #ef4444;
+        @keyframes float-up {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-20px); opacity: 0; }
         }
-        .log-container::-webkit-scrollbar {
-            width: 8px;
-        }
-        .log-container::-webkit-scrollbar-thumb {
-            background: #4b5563; 
-            border-radius: 4px;
-        }
-        .log-container::-webkit-scrollbar-track {
-            background: #1f2937; 
-        }
-        body {
-            background-color: #111827;
-            color: #e5e7eb;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+        .critical-low { animation: pulse-red 2s infinite; border: 1px solid #ef4444; }
+        .pop-text { position: absolute; animation: float-up 1s forwards; pointer-events: none; font-weight: bold; }
+        .log-container::-webkit-scrollbar { width: 8px; }
+        .log-container::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        .log-container::-webkit-scrollbar-track { background: #1f2937; }
+        body { background-color: #111827; color: #e5e7eb; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
     </style>
 </head>
 <body>
 
-<div id="app" class="max-w-4xl mx-auto p-4 min-h-screen flex flex-col">
+<div id="app" class="max-w-4xl mx-auto p-4 min-h-screen flex flex-col relative">
 
     <!-- 顶部标题栏 -->
     <div class="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
         <div>
-            <h1 class="text-3xl font-bold text-white tracking-wider">LAST MINUTE</h1>
-            <p class="text-gray-400 text-sm">存活天数: <span class="text-yellow-500 font-mono text-lg">{{ daysSurvived }}</span> 天</p>
+            <h1 class="text-3xl font-bold text-white tracking-wider">LAST MINUTE <span class="text-xs bg-gray-700 px-2 py-1 rounded text-green-400">v2.0</span></h1>
+            <p class="text-gray-400 text-sm">存活: <span class="text-yellow-500 font-mono text-lg">{{ daysSurvived.toFixed(1) }}</span> 天</p>
         </div>
         <div class="text-right">
-            <button @click="hardReset" class="text-xs text-red-500 underline hover:text-red-400">重置存档</button>
+            <button @click="hardReset" class="text-xs text-red-500 underline hover:text-red-400">⚠️ 重置存档</button>
         </div>
     </div>
 
     <!-- 游戏结束画面 -->
-    <div v-if="isGameOver" class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
-        <div class="text-center p-8 border border-red-600 rounded-lg bg-gray-900 max-w-md">
-            <h2 class="text-4xl text-red-500 font-bold mb-4">你死了</h2>
-            <p class="text-gray-300 mb-6">死因: {{ deathReason }}</p>
-            <p class="text-gray-500 mb-6">你一共存活了 {{ daysSurvived }} 天。</p>
-            <button @click="hardReset" class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-bold">重新开始</button>
+    <div v-if="isGameOver" class="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-50">
+        <div class="text-center p-8 border border-red-600 rounded-lg bg-gray-900 max-w-md shadow-2xl shadow-red-900/50">
+            <h2 class="text-5xl text-red-600 font-bold mb-4">W A S T E D</h2>
+            <p class="text-gray-300 text-xl mb-6">死因: {{ deathReason }}</p>
+            <p class="text-gray-500 mb-8">存活时间: {{ daysSurvived.toFixed(1) }} 天</p>
+            <button @click="hardReset" class="px-8 py-3 bg-red-600 hover:bg-red-700 text-white rounded font-bold text-lg transition">重新开始</button>
         </div>
     </div>
 
@@ -64,59 +53,69 @@
         <!-- 左侧：状态仪表盘 -->
         <div class="space-y-6">
             <!-- 生命值 -->
-            <div class="bg-gray-800 p-4 rounded-lg border border-gray-700" :class="{'critical-low': stats.hp < 30}">
+            <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 relative" :class="{'critical-low': stats.hp < 30}">
                 <div class="flex justify-between mb-1">
                     <span class="font-bold">❤️ 生命值</span>
                     <span>{{ Math.floor(stats.hp) }}/100</span>
                 </div>
-                <div class="w-full bg-gray-900 rounded-full h-2.5">
-                    <div class="bg-red-600 h-2.5 rounded-full transition-all duration-500" :style="{ width: stats.hp + '%' }"></div>
+                <div class="w-full bg-gray-900 rounded-full h-3">
+                    <div class="bg-red-600 h-3 rounded-full transition-all duration-500" :style="{ width: stats.hp + '%' }"></div>
+                </div>
+                <div v-if="buildings.medStation.level > 0" class="text-xs text-green-500 mt-1 flex items-center">
+                    <span class="mr-1">🏥</span> 医疗站正在缓慢治疗中...
                 </div>
             </div>
 
-            <!-- 饱食度 -->
-            <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                <div class="flex justify-between mb-1">
-                    <span class="font-bold">🥩 饱食度</span>
-                    <span :class="{'text-red-400': stats.food <= 0}">{{ Math.floor(stats.food) }}/100</span>
+            <!-- 状态组 -->
+            <div class="grid grid-cols-2 gap-4">
+                <!-- 饱食 -->
+                <div class="bg-gray-800 p-3 rounded-lg border border-gray-700">
+                    <div class="flex justify-between text-sm mb-1">
+                        <span>🥩 饱食</span>
+                        <span :class="{'text-red-400': stats.food <= 0}">{{ Math.floor(stats.food) }}</span>
+                    </div>
+                    <div class="w-full bg-gray-900 rounded-full h-1.5">
+                        <div class="bg-yellow-600 h-1.5 rounded-full" :style="{ width: stats.food + '%' }"></div>
+                    </div>
                 </div>
-                <div class="w-full bg-gray-900 rounded-full h-2.5">
-                    <div class="bg-yellow-600 h-2.5 rounded-full transition-all duration-500" :style="{ width: stats.food + '%' }"></div>
+                <!-- 水分 -->
+                <div class="bg-gray-800 p-3 rounded-lg border border-gray-700">
+                    <div class="flex justify-between text-sm mb-1">
+                        <span>💧 水分</span>
+                        <span :class="{'text-red-400': stats.water <= 0}">{{ Math.floor(stats.water) }}</span>
+                    </div>
+                    <div class="w-full bg-gray-900 rounded-full h-1.5">
+                        <div class="bg-blue-500 h-1.5 rounded-full" :style="{ width: stats.water + '%' }"></div>
+                    </div>
                 </div>
-                <p class="text-xs text-gray-500 mt-1">消耗: -{{ CONSTANTS.FOOD_DECAY * 60 }}/分钟</p>
             </div>
 
-            <!-- 水分 -->
+            <!-- 资源库存 (升级版) -->
             <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                <div class="flex justify-between mb-1">
-                    <span class="font-bold">💧 水分</span>
-                    <span :class="{'text-red-400': stats.water <= 0}">{{ Math.floor(stats.water) }}/100</span>
-                </div>
-                <div class="w-full bg-gray-900 rounded-full h-2.5">
-                    <div class="bg-blue-500 h-2.5 rounded-full transition-all duration-500" :style="{ width: stats.water + '%' }"></div>
-                </div>
-                <p class="text-xs text-gray-500 mt-1">消耗: -{{ CONSTANTS.WATER_DECAY * 60 }}/分钟</p>
-            </div>
-
-            <!-- 资源库存 -->
-            <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                <h3 class="font-bold text-gray-300 mb-3 border-b border-gray-600 pb-2">📦 仓库资源</h3>
+                <h3 class="font-bold text-gray-300 mb-3 border-b border-gray-600 pb-2 flex justify-between">
+                    <span>📦 仓库资源</span>
+                    <span class="text-xs font-normal text-gray-500">容量: {{ caps.storage }}</span>
+                </h3>
                 <ul class="space-y-2 text-sm">
-                    <li class="flex justify-between">
-                        <span>🥩 食物罐头</span>
-                        <span class="font-mono text-yellow-400">{{ Math.floor(resources.food) }} / {{ caps.storage }}</span>
+                    <li class="flex justify-between items-center">
+                        <span class="text-gray-400">🥩 食物</span>
+                        <span class="font-mono text-yellow-400 text-lg">{{ Math.floor(resources.food) }}</span>
                     </li>
-                    <li class="flex justify-between">
-                        <span>💧 纯净水</span>
-                        <span class="font-mono text-blue-400">{{ Math.floor(resources.water) }} / {{ caps.storage }}</span>
+                    <li class="flex justify-between items-center">
+                        <span class="text-gray-400">💧 纯净水</span>
+                        <span class="font-mono text-blue-400 text-lg">{{ Math.floor(resources.water) }}</span>
                     </li>
-                    <li class="flex justify-between">
-                        <span>🧱 废料/建材</span>
-                        <span class="font-mono text-orange-400">{{ Math.floor(resources.material) }}</span>
+                    <li class="flex justify-between items-center border-t border-gray-700 pt-2">
+                        <span class="text-gray-400">🧱 废料建材</span>
+                        <span class="font-mono text-orange-400 text-lg">{{ Math.floor(resources.material) }}</span>
                     </li>
-                    <li class="flex justify-between">
-                        <span>💊 药品</span>
-                        <span class="font-mono text-green-400">{{ Math.floor(resources.meds) }}</span>
+                    <li class="flex justify-between items-center">
+                        <span class="text-gray-400">🔩 精密零件</span> <!-- 新资源 -->
+                        <span class="font-mono text-purple-400 text-lg">{{ Math.floor(resources.parts) }}</span>
+                    </li>
+                    <li class="flex justify-between items-center">
+                        <span class="text-gray-400">💊 急救药品</span>
+                        <span class="font-mono text-red-400 text-lg">{{ Math.floor(resources.meds) }}</span>
                     </li>
                 </ul>
             </div>
@@ -125,60 +124,83 @@
         <!-- 中间：核心操作区 -->
         <div class="md:col-span-2 flex flex-col space-y-4">
             
-            <!-- 基础生存操作 -->
-            <div class="grid grid-cols-2 gap-4">
-                <button @click="eat" :disabled="resources.food < 1" 
-                    class="p-4 rounded bg-yellow-900 hover:bg-yellow-800 disabled:opacity-50 disabled:cursor-not-allowed transition text-left">
-                    <div class="font-bold text-yellow-100">🍽️ 进食</div>
-                    <div class="text-xs text-yellow-300 mt-1">消耗 1 食物，恢复 20 饱食</div>
+            <!-- 生存操作区 -->
+            <div class="grid grid-cols-3 gap-3">
+                <button @click="eat" :disabled="resources.food < 1" class="p-3 rounded bg-yellow-900 hover:bg-yellow-800 disabled:opacity-50 transition text-center">
+                    <div class="text-xl">🍽️</div>
+                    <div class="text-xs font-bold text-yellow-100 mt-1">吃饭</div>
                 </button>
-                <button @click="drink" :disabled="resources.water < 1" 
-                    class="p-4 rounded bg-blue-900 hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition text-left">
-                    <div class="font-bold text-blue-100">🚰 喝水</div>
-                    <div class="text-xs text-blue-300 mt-1">消耗 1 水，恢复 20 水分</div>
+                <button @click="drink" :disabled="resources.water < 1" class="p-3 rounded bg-blue-900 hover:bg-blue-800 disabled:opacity-50 transition text-center">
+                    <div class="text-xl">🚰</div>
+                    <div class="text-xs font-bold text-blue-100 mt-1">喝水</div>
+                </button>
+                <button @click="useMeds" :disabled="resources.meds < 1 || stats.hp >= 100" class="p-3 rounded bg-red-900 hover:bg-red-800 disabled:opacity-50 transition text-center">
+                    <div class="text-xl">💊</div>
+                    <div class="text-xs font-bold text-red-100 mt-1">治疗 (+30HP)</div>
                 </button>
             </div>
 
             <!-- 核心搜寻按钮 -->
             <button @click="scavenge" :disabled="scavengeTimer > 0"
-                class="w-full py-6 rounded-lg font-bold text-xl transition transform active:scale-95 relative overflow-hidden"
-                :class="scavengeTimer > 0 ? 'bg-gray-700 cursor-not-allowed' : 'bg-green-700 hover:bg-green-600 shadow-lg shadow-green-900/50'">
-                <span v-if="scavengeTimer > 0">正在搜寻... {{ scavengeTimer }}s</span>
-                <span v-else>🔍 外出搜寻物资</span>
+                class="w-full py-6 rounded-lg font-bold text-xl transition transform active:scale-95 relative overflow-hidden border-b-4"
+                :class="scavengeTimer > 0 ? 'bg-gray-700 border-gray-800 cursor-not-allowed' : 'bg-green-700 border-green-900 hover:bg-green-600 shadow-lg shadow-green-900/50'">
+                <div class="flex flex-col items-center z-10 relative">
+                    <span v-if="scavengeTimer > 0">正在探索废墟... {{ scavengeTimer }}s</span>
+                    <span v-else class="flex items-center gap-2">
+                        🔍 外出搜寻物资 
+                        <span v-if="buildings.fence.level > 0" class="text-xs bg-gray-800 px-2 py-1 rounded text-green-300 font-normal">🛡️ 防御加成 Lv.{{buildings.fence.level}}</span>
+                    </span>
+                </div>
                 <!-- 搜寻进度条 -->
-                <div v-if="scavengeTimer > 0" class="absolute bottom-0 left-0 h-1 bg-green-400 transition-all duration-1000 ease-linear" :style="{width: (scavengeTimer/3)*100 + '%'}"></div>
+                <div v-if="scavengeTimer > 0" class="absolute bottom-0 left-0 h-full bg-green-800 opacity-30 transition-all duration-100 ease-linear" :style="{width: (scavengeTimer/currentScavengeTime)*100 + '%'}"></div>
             </button>
 
             <!-- 建筑/升级面板 -->
-            <div class="bg-gray-800 rounded-lg border border-gray-700 flex-grow">
+            <div class="bg-gray-800 rounded-lg border border-gray-700 flex-grow flex flex-col">
                 <div class="p-3 border-b border-gray-700 bg-gray-750 flex justify-between items-center">
                     <h3 class="font-bold">🔨 避难所建设</h3>
-                    <span class="text-xs text-gray-400">现有建材: {{ Math.floor(resources.material) }}</span>
+                    <div class="text-xs space-x-2">
+                        <span class="text-orange-400">🧱 {{ Math.floor(resources.material) }}</span>
+                        <span class="text-purple-400">🔩 {{ Math.floor(resources.parts) }}</span>
+                    </div>
                 </div>
-                <div class="p-4 space-y-3 max-h-64 overflow-y-auto">
+                <div class="p-2 space-y-2 max-h-[400px] overflow-y-auto flex-grow">
                     
-                    <!-- 建筑列表 -->
-                    <div v-for="(build, key) in buildings" :key="key" class="flex justify-between items-center bg-gray-900 p-3 rounded border border-gray-700">
-                        <div>
-                            <div class="font-bold text-sm">{{ build.name }} (Lv.{{ build.level }})</div>
-                            <div class="text-xs text-gray-500">{{ build.desc }}</div>
-                            <div class="text-xs text-green-400 mt-1">当前效果: {{ build.effectPerTick * 60 * 60 }}/小时</div>
+                    <!-- 建筑列表渲染 -->
+                    <div v-for="(build, key) in buildings" :key="key" class="bg-gray-900 p-3 rounded border border-gray-700 hover:border-gray-600 transition">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="font-bold text-sm text-gray-200 flex items-center gap-2">
+                                    {{ build.name }} <span class="text-xs bg-gray-800 px-1 rounded text-gray-400">Lv.{{ build.level }}</span>
+                                </div>
+                                <div class="text-xs text-gray-500 mt-1">{{ build.desc }}</div>
+                                <div class="text-xs text-indigo-400 mt-1" v-if="build.effectText">{{ build.effectText }}</div>
+                            </div>
+                            
+                            <!-- 升级按钮 -->
+                            <button @click="upgradeBuilding(key)" 
+                                :disabled="!canAfford(build)"
+                                class="ml-2 px-3 py-2 bg-indigo-600 text-xs text-white rounded hover:bg-indigo-500 disabled:bg-gray-800 disabled:text-gray-600 disabled:cursor-not-allowed min-w-[80px] text-center">
+                                <div v-if="build.maxLevel && build.level >= build.maxLevel">已满级</div>
+                                <div v-else>
+                                    升级
+                                    <div class="mt-1 flex flex-col gap-0.5 opacity-80">
+                                        <span v-if="getCost(build).material > 0">🧱 {{ getCost(build).material }}</span>
+                                        <span v-if="getCost(build).parts > 0">🔩 {{ getCost(build).parts }}</span>
+                                    </div>
+                                </div>
+                            </button>
                         </div>
-                        <button @click="upgradeBuilding(key)" 
-                            :disabled="resources.material < build.cost * (build.level + 1)"
-                            class="px-3 py-1 bg-indigo-600 text-xs text-white rounded hover:bg-indigo-500 disabled:bg-gray-700 disabled:text-gray-500">
-                            升级 <br> ({{ build.cost * (build.level + 1) }} 建材)
-                        </button>
                     </div>
 
                 </div>
             </div>
 
             <!-- 日志窗口 -->
-            <div class="bg-black rounded border border-gray-700 p-3 h-40 overflow-y-auto log-container font-mono text-sm">
+            <div class="bg-black rounded border border-gray-700 p-3 h-32 overflow-y-auto log-container font-mono text-xs md:text-sm">
                 <div v-if="logs.length === 0" class="text-gray-600 italic">游戏日志将显示在这里...</div>
-                <div v-for="(log, index) in logs" :key="index" class="mb-1">
-                    <span class="text-gray-500">[{{ log.time }}]</span> 
+                <div v-for="(log, index) in logs" :key="index" class="mb-1 leading-tight">
+                    <span class="text-gray-600">[{{ log.time }}]</span> 
                     <span :class="log.color">{{ log.msg }}</span>
                 </div>
             </div>
@@ -192,64 +214,68 @@
 
     createApp({
         setup() {
-            // --- 游戏常量配置 ---
+            // --- 配置 ---
             const CONSTANTS = {
-                TICK_RATE: 1000, // 1秒刷新一次
-                WATER_DECAY: 0.15, // 每秒消耗水分 (0.15 * 60 = 9/分钟)
-                FOOD_DECAY: 0.08,  // 每秒消耗食物 (0.08 * 60 = 4.8/分钟)
-                HEAL_RATE: 0.5,    // 状态良好时回血
-                DMG_RATE: 1.0      // 状态归零时扣血
+                TICK_RATE: 1000,
+                WATER_DECAY: 0.15,
+                FOOD_DECAY: 0.08,
+                BASE_HEAL: 0.2,
+                DMG_RATE: 1.0
             };
 
-            // --- 核心数据状态 ---
             const daysSurvived = ref(0);
             const totalTicks = ref(0);
             const isGameOver = ref(false);
             const deathReason = ref("");
             const scavengeTimer = ref(0);
+            const currentScavengeTime = ref(3); // 动态变化
 
-            // 玩家状态
-            const stats = reactive({
-                hp: 100,
-                food: 100,
-                water: 100
-            });
+            const stats = reactive({ hp: 100, food: 100, water: 100 });
+            
+            // 新增 parts 和 meds
+            const resources = reactive({ food: 5, water: 5, material: 0, parts: 0, meds: 0 });
+            const caps = reactive({ storage: 50 });
 
-            // 资源包
-            const resources = reactive({
-                food: 5,
-                water: 5,
-                material: 0,
-                meds: 0
-            });
-
-            // 容量上限
-            const caps = reactive({
-                storage: 50
-            });
-
-            // 建筑数据
+            // --- 建筑系统 (增强版) ---
             const buildings = reactive({
                 rainCatcher: {
                     name: "集雨器",
                     level: 0,
-                    cost: 5, // 基础消耗
-                    desc: "自动收集少量的水。",
-                    effectPerTick: 0.05 // Lv1 每秒+0.05
+                    baseCost: { material: 5, parts: 0 },
+                    desc: "自动收集水源。",
+                    effectPerTick: 0.05,
+                    effectText: "每级产水 +3/分"
                 },
                 trap: {
-                    name: "捕兽夹",
+                    name: "简易捕兽夹",
                     level: 0,
-                    cost: 8,
-                    desc: "偶尔能抓到老鼠。",
-                    effectPerTick: 0.02 
+                    baseCost: { material: 8, parts: 0 },
+                    desc: "自动捕捉小动物。",
+                    effectPerTick: 0.02,
+                    effectText: "每级产食 +1.2/分"
+                },
+                fence: {
+                    name: "🛡️ 防御工事",
+                    level: 0,
+                    maxLevel: 10,
+                    baseCost: { material: 15, parts: 1 }, // 需要零件！
+                    desc: "降低外出搜寻受伤概率。",
+                    effectText: "每级降低 2% 受伤率"
+                },
+                medStation: {
+                    name: "🏥 医疗站",
+                    level: 0,
+                    maxLevel: 5,
+                    baseCost: { material: 30, parts: 3 },
+                    desc: "提供卫生环境，缓慢回血。",
+                    effectText: "每级每分钟回血 +1 HP"
                 },
                 storage: {
                     name: "加固仓库",
                     level: 0,
-                    cost: 20,
-                    desc: "增加资源存储上限 +50。",
-                    effectPerTick: 0 // 特殊逻辑
+                    baseCost: { material: 20, parts: 0 },
+                    desc: "增加资源上限。",
+                    effectText: "每级容量 +50"
                 }
             });
 
@@ -259,270 +285,227 @@
             const addLog = (msg, type = 'normal') => {
                 const now = new Date();
                 const timeString = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-                let color = 'text-gray-300';
+                let color = 'text-gray-400';
                 if (type === 'good') color = 'text-green-400';
+                if (type === 'rare') color = 'text-purple-400 font-bold';
                 if (type === 'bad') color = 'text-red-400';
                 if (type === 'info') color = 'text-blue-400';
                 
                 logs.value.push({ time: timeString, msg, color });
-                // 保持日志最多 50 条
                 if (logs.value.length > 50) logs.value.shift();
-                // 自动滚动到底部 (稍后执行)
                 setTimeout(() => {
                     const container = document.querySelector('.log-container');
                     if (container) container.scrollTop = container.scrollHeight;
                 }, 10);
             };
 
-            // --- 核心游戏循环 (每秒执行) ---
+            // --- 计算升级消耗 ---
+            const getCost = (build) => {
+                const multiplier = build.level + 1;
+                return {
+                    material: build.baseCost.material * multiplier,
+                    parts: build.baseCost.parts * multiplier
+                };
+            };
+
+            const canAfford = (build) => {
+                if (build.maxLevel && build.level >= build.maxLevel) return false;
+                const cost = getCost(build);
+                return resources.material >= cost.material && resources.parts >= cost.parts;
+            };
+
+            // --- 游戏循环 ---
             const tick = () => {
                 if (isGameOver.value) return;
 
                 totalTicks.value++;
-                if (totalTicks.value % 60 === 0) daysSurvived.value += 0.1; // 简化：600秒算一天，这里仅显示用
+                if (totalTicks.value % 60 === 0) daysSurvived.value += 0.1;
 
                 // 1. 消耗
                 stats.water -= CONSTANTS.WATER_DECAY;
                 stats.food -= CONSTANTS.FOOD_DECAY;
 
-                // 2. 建筑产出 (放置收益)
-                if (buildings.rainCatcher.level > 0) {
-                    resources.water += buildings.rainCatcher.level * buildings.rainCatcher.effectPerTick;
-                }
-                if (buildings.trap.level > 0) {
-                    resources.food += buildings.trap.level * buildings.trap.effectPerTick;
+                // 2. 生产
+                if (buildings.rainCatcher.level > 0) resources.water += buildings.rainCatcher.level * buildings.rainCatcher.effectPerTick;
+                if (buildings.trap.level > 0) resources.food += buildings.trap.level * buildings.trap.effectPerTick;
+
+                // 医疗站回血 (每分钟触发一次大回血，或者分散到每秒) -> 这里做成每秒微量回血
+                if (buildings.medStation.level > 0 && stats.hp < 100 && stats.food > 0 && stats.water > 0) {
+                    // Level 1 = 1 HP / min = 0.016 HP / sec
+                    const healAmount = (buildings.medStation.level * 1.0) / 60;
+                    stats.hp += healAmount;
                 }
 
-                // 资源上限截断
+                // 上限控制
                 caps.storage = 50 + (buildings.storage.level * 50);
-                if (resources.water > caps.storage) resources.water = caps.storage;
-                if (resources.food > caps.storage) resources.food = caps.storage;
+                Object.keys(resources).forEach(k => {
+                    if (resources[k] > caps.storage) resources[k] = caps.storage;
+                });
 
-                // 3. 生命值计算
+                // 3. 状态结算
                 let isHurting = false;
-                
-                // 缺水
-                if (stats.water <= 0) {
-                    stats.water = 0;
-                    stats.hp -= CONSTANTS.DMG_RATE;
-                    isHurting = true;
-                    if (totalTicks.value % 5 === 0) addLog("你极度干渴，生命正在流逝...", "bad");
-                }
+                if (stats.water <= 0) { stats.water = 0; stats.hp -= CONSTANTS.DMG_RATE; isHurting = true; }
+                if (stats.food <= 0) { stats.food = 0; stats.hp -= CONSTANTS.DMG_RATE * 0.5; isHurting = true; }
 
-                // 缺粮
-                if (stats.food <= 0) {
-                    stats.food = 0;
-                    stats.hp -= CONSTANTS.DMG_RATE * 0.5; // 饿死比渴死慢
-                    isHurting = true;
-                    if (totalTicks.value % 10 === 0) addLog("你的胃在抽搐，你需要食物...", "bad");
-                }
-
-                // 自动回血 (如果不饿不渴)
+                // 基础回血 (如果没有受伤且资源充足)
                 if (!isHurting && stats.food > 50 && stats.water > 50 && stats.hp < 100) {
-                    stats.hp += CONSTANTS.HEAL_RATE;
+                    stats.hp += CONSTANTS.BASE_HEAL / 60; 
                 }
 
-                // 4. 死亡判定
                 if (stats.hp <= 0) {
                     stats.hp = 0;
                     isGameOver.value = true;
-                    deathReason.value = stats.water <= 0 ? "脱水而死" : "饥饿而死";
-                    addLog(`游戏结束: ${deathReason.value}`, "bad");
+                    deathReason.value = stats.water <= 0 ? "脱水" : "饥饿";
                     clearSave();
                 }
 
-                // 5. 自动保存 (每5秒)
                 if (totalTicks.value % 5 === 0) saveGame();
             };
 
-            // --- 玩家操作 ---
+            // --- 动作 ---
             const scavenge = () => {
                 if (scavengeTimer.value > 0) return;
                 
-                // 启动冷却
-                scavengeTimer.value = 3; // 3秒冷却
+                const duration = 3;
+                currentScavengeTime.value = duration;
+                scavengeTimer.value = duration;
+                
                 const timer = setInterval(() => {
                     scavengeTimer.value--;
-                    if (scavengeTimer.value <= 0) clearInterval(timer);
+                    if (scavengeTimer.value <= 0) {
+                        clearInterval(timer);
+                        resolveScavenge();
+                    }
                 }, 1000);
+            };
 
-                // 随机事件逻辑
-                const rand = Math.random();
-                
-                // 消耗体力
+            const resolveScavenge = () => {
+                // 消耗
                 stats.food -= 2;
                 stats.water -= 3;
+                
+                const rand = Math.random();
+                
+                // 计算受伤率：基础 15%，每级围墙减少 2%
+                let injuryChance = 0.15 - (buildings.fence.level * 0.02);
+                if (injuryChance < 0.01) injuryChance = 0.01; // 最低 1%
 
-                if (rand < 0.1) {
-                    // 10% 受伤
+                if (rand < injuryChance) {
                     const dmg = Math.floor(Math.random() * 10) + 5;
                     stats.hp -= dmg;
-                    addLog(`搜寻遭遇野狗袭击！生命 -${dmg}`, "bad");
-                } else if (rand < 0.4) {
-                    // 30% 没找到东西
-                    addLog("你在废墟里转了一圈，一无所获。", "normal");
+                    addLog(`遭遇掠夺者！围墙未完全防御，受伤 -${dmg}`, "bad");
+                } else if (rand < 0.35) {
+                    addLog("这里已经被搜刮空了，一无所获。", "normal");
                 } else {
-                    // 60% 找到资源
-                    const foundFood = Math.floor(Math.random() * 3);
-                    const foundWater = Math.floor(Math.random() * 4);
-                    const foundMat = Math.floor(Math.random() * 2) + (rand > 0.8 ? 2 : 0); // 暴击
+                    // 掉落逻辑 v2.0
+                    const lootRoll = Math.random();
+                    
+                    // 基础物资
+                    let foundFood = Math.floor(Math.random() * 4) + 1;
+                    let foundWater = Math.floor(Math.random() * 4) + 1;
+                    let foundMat = 0;
+                    let foundParts = 0;
+                    let foundMeds = 0;
+
+                    // 60% 几率找到建材
+                    if (Math.random() > 0.4) foundMat = Math.floor(Math.random() * 3) + 1;
+
+                    // 稀有掉落
+                    if (lootRoll > 0.85) { // 15% 几率找到零件
+                        foundParts = 1;
+                        addLog("你从一台废弃机器里拆出了精密的【零件】！", "rare");
+                    }
+                    if (lootRoll > 0.95) { // 5% 几率找到药品
+                        foundMeds = 1;
+                        addLog("在一个急救箱里发现了【急救药】！", "rare");
+                    }
 
                     resources.food += foundFood;
                     resources.water += foundWater;
                     resources.material += foundMat;
-                    
-                    let msg = "搜寻收获: ";
-                    if (foundFood) msg += `食物+${foundFood} `;
-                    if (foundWater) msg += `水+${foundWater} `;
-                    if (foundMat) msg += `建材+${foundMat}`;
-                    addLog(msg, "good");
+                    resources.parts += foundParts;
+                    resources.meds += foundMeds;
+
+                    let msg = `搜刮: 食+${foundFood} 水+${foundWater}`;
+                    if (foundMat) msg += ` 砖+${foundMat}`;
+                    if (foundParts) msg += ` 零件+${foundParts}`;
+                    if (foundMeds) msg += ` 药+${foundMeds}`;
+                    if (!foundParts && !foundMeds) addLog(msg, "good"); // 如果有稀有掉落，前面已经提示过了，这里就不重复
                 }
             };
 
-            const eat = () => {
-                if (resources.food >= 1 && stats.food < 100) {
-                    resources.food--;
-                    stats.food = Math.min(100, stats.food + 20);
-                    addLog("吃了一份罐头，饱食度恢复。", "info");
-                }
-            };
-
-            const drink = () => {
-                if (resources.water >= 1 && stats.water < 100) {
-                    resources.water--;
-                    stats.water = Math.min(100, stats.water + 20);
-                    addLog("喝了一瓶水，口渴缓解。", "info");
-                }
+            const eat = () => { if (resources.food >= 1) { resources.food--; stats.food = Math.min(100, stats.food + 20); } };
+            const drink = () => { if (resources.water >= 1) { resources.water--; stats.water = Math.min(100, stats.water + 20); } };
+            const useMeds = () => { 
+                if (resources.meds >= 1) { 
+                    resources.meds--; 
+                    stats.hp = Math.min(100, stats.hp + 30); 
+                    addLog("使用了药品，伤口快速愈合。", "good");
+                } 
             };
 
             const upgradeBuilding = (key) => {
                 const build = buildings[key];
-                const cost = build.cost * (build.level + 1);
-                
-                if (resources.material >= cost) {
-                    resources.material -= cost;
-                    build.level++;
-                    addLog(`升级了 ${build.name} 到 Lv.${build.level}`, "good");
-                }
+                if (!canAfford(build)) return;
+
+                const cost = getCost(build);
+                resources.material -= cost.material;
+                resources.parts -= cost.parts;
+                build.level++;
+                addLog(`建造完成：${build.name} 升级至 Lv.${build.level}`, "good");
             };
 
-            // --- 存档系统 (方案C核心) ---
+            // --- 存档/读档 (兼容性处理) ---
             const saveGame = () => {
                 if (isGameOver.value) return;
-                const saveData = {
-                    stats: stats,
-                    resources: resources,
-                    buildings: buildings,
-                    days: daysSurvived.value,
-                    lastSaveTime: Date.now()
-                };
-                localStorage.setItem('lastMinuteSave', JSON.stringify(saveData));
+                const data = { stats, resources, buildings, days: daysSurvived.value, time: Date.now() };
+                localStorage.setItem('lm_save_v2', JSON.stringify(data));
             };
 
             const loadGame = () => {
-                const saveStr = localStorage.getItem('lastMinuteSave');
+                const saveStr = localStorage.getItem('lm_save_v2') || localStorage.getItem('lastMinuteSave'); // 尝试读取新旧存档
                 if (saveStr) {
                     try {
                         const data = JSON.parse(saveStr);
-                        // 恢复数据
                         Object.assign(stats, data.stats);
-                        Object.assign(resources, data.resources);
-                        // 恢复建筑需要逐个恢复，防止结构变化
+                        
+                        // 深度合并资源 (防止旧存档缺少 parts/meds)
+                        resources.food = data.resources.food || 5;
+                        resources.water = data.resources.water || 5;
+                        resources.material = data.resources.material || 0;
+                        resources.parts = data.resources.parts || 0; // 新字段默认值
+                        resources.meds = data.resources.meds || 0;   // 新字段默认值
+
+                        // 恢复建筑等级
                         for (let k in data.buildings) {
                             if (buildings[k]) buildings[k].level = data.buildings[k].level;
                         }
-                        daysSurvived.value = data.days;
-
-                        // --- 离线收益计算 ---
-                        const now = Date.now();
-                        const secondsOffline = (now - data.lastSaveTime) / 1000;
+                        daysSurvived.value = data.days || 0;
                         
-                        if (secondsOffline > 10) {
-                            calculateOfflineProgress(secondsOffline);
-                        }
-                    } catch (e) {
-                        console.error("存档损坏", e);
-                        addLog("存档读取失败，开始新游戏。", "bad");
-                    }
-                } else {
-                    addLog("欢迎来到末日。你需要搜集物资活下去。", "info");
+                        // 简单的离线计算
+                        const offlineSec = (Date.now() - (data.time || Date.now())) / 1000;
+                        if (offlineSec > 10) calculateOffline(offlineSec);
+
+                    } catch (e) { console.error(e); }
                 }
             };
 
-            const calculateOfflineProgress = (seconds) => {
-                // 离线收益计算逻辑
-                addLog(`你离开了 ${Math.floor(seconds)} 秒...`, "info");
-
-                // 1. 离线消耗 (打折，避免上线直接死)
-                const offlineHunger = seconds * CONSTANTS.FOOD_DECAY * 0.2; // 消耗减缓为20%
-                const offlineThirst = seconds * CONSTANTS.WATER_DECAY * 0.2;
-                
-                stats.food -= offlineHunger;
-                stats.water -= offlineThirst;
-
-                // 离线不致死，最低保留 1 点
-                if (stats.food < 1) stats.food = 1;
-                if (stats.water < 1) stats.water = 1;
-
-                // 2. 离线生产
-                let producedWater = 0;
-                let producedFood = 0;
-
-                if (buildings.rainCatcher.level > 0) {
-                    producedWater = seconds * buildings.rainCatcher.level * buildings.rainCatcher.effectPerTick;
-                }
-                if (buildings.trap.level > 0) {
-                    producedFood = seconds * buildings.trap.level * buildings.trap.effectPerTick;
-                }
-
-                resources.water += producedWater;
-                resources.food += producedFood;
-
-                // 同样要检查上限
-                const max = 50 + (buildings.storage.level * 50);
-                if (resources.water > max) resources.water = max;
-                if (resources.food > max) resources.food = max;
-
-                addLog(`离线期间: 饱食-${Math.floor(offlineHunger)}, 水分-${Math.floor(offlineThirst)}`, "bad");
-                if (producedWater > 0 || producedFood > 0) {
-                    addLog(`自动化设施产出了: 水+${Math.floor(producedWater)}, 食+${Math.floor(producedFood)}`, "good");
-                }
+            const calculateOffline = (sec) => {
+                addLog(`离线了 ${Math.floor(sec)} 秒`, "info");
+                // 离线产量
+                if (buildings.rainCatcher.level > 0) resources.water += sec * buildings.rainCatcher.level * buildings.rainCatcher.effectPerTick;
+                if (buildings.trap.level > 0) resources.food += sec * buildings.trap.level * buildings.trap.effectPerTick;
+                // 离线消耗 (20%)
+                stats.food = Math.max(1, stats.food - (sec * CONSTANTS.FOOD_DECAY * 0.2));
+                stats.water = Math.max(1, stats.water - (sec * CONSTANTS.WATER_DECAY * 0.2));
             };
 
-            const clearSave = () => {
-                localStorage.removeItem('lastMinuteSave');
-            };
+            const clearSave = () => { localStorage.removeItem('lm_save_v2'); localStorage.removeItem('lastMinuteSave'); };
+            const hardReset = () => { if(confirm("重置将丢失所有进度，确定吗？")) { clearSave(); location.reload(); } };
 
-            const hardReset = () => {
-                if(confirm("确定要删除存档重新开始吗？")) {
-                    clearSave();
-                    location.reload();
-                }
-            };
+            onMounted(() => { loadGame(); setInterval(tick, CONSTANTS.TICK_RATE); });
 
-            // 初始化
-            onMounted(() => {
-                loadGame();
-                setInterval(tick, CONSTANTS.TICK_RATE);
-            });
-
-            return {
-                stats,
-                resources,
-                buildings,
-                logs,
-                scavenge,
-                scavengeTimer,
-                eat,
-                drink,
-                upgradeBuilding,
-                daysSurvived,
-                CONSTANTS,
-                isGameOver,
-                deathReason,
-                hardReset,
-                caps
-            };
+            return { stats, resources, buildings, logs, scavenge, scavengeTimer, currentScavengeTime, eat, drink, useMeds, upgradeBuilding, daysSurvived, isGameOver, deathReason, hardReset, caps, canAfford, getCost };
         }
     }).mount('#app');
 </script>
